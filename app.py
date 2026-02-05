@@ -104,6 +104,21 @@ def predict_room(image_path):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+@app.route('/', methods=['GET'])
+def index():
+    """Root route: service info and available endpoints"""
+    return jsonify({
+        "service": "TenantGuard Room Classification API",
+        "status": "running",
+        "endpoints": {
+            "health": "GET /health",
+            "predict": "POST /predict (multipart form-data, field: image)",
+        },
+        "docs": "Use GET /health to check model status.",
+    })
+
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
