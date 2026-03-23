@@ -21,14 +21,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Load model (same logic as predict_room.py)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Resolve model path - try multiple possible locations
+# Resolve model path for Render deployment
+# Assumes 'room_classifier.pt' is in the same directory as 'app.py'
 _script_dir = os.path.dirname(os.path.abspath(__file__))
-_project_root = os.path.dirname(_script_dir)
-MODEL_PATH = os.path.join(_project_root, "room_classifier.pt")
-
-# If model not found in project root, try same directory as script
-if not os.path.exists(MODEL_PATH):
-    MODEL_PATH = os.path.join(_script_dir, "room_classifier.pt")
+MODEL_PATH = os.path.join(_script_dir, "room_classifier.pt")
 
 # Global variables for model (loaded once at startup)
 model = None
@@ -40,8 +36,16 @@ def load_model():
     global model, class_names, transform
     
     if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
-    
+        # Fallback for local development structure if needed
+        _project_root = os.path.dirname(_script_dir)
+        local_path = os.path.join(_project_root, "room_classifier.pt")
+        if os.path.exists(local_path):
+            global MODEL_PATH
+            MODEL_PATH = local_path
+        else:
+            raise FileNotFoundError(f"Model file not found at {MODEL_PATH} or {local_path}")
+
+    print(f"Attempting to load model from: {MODEL_PATH}")
     checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
     class_names = checkpoint["class_names"]
     
@@ -210,13 +214,15 @@ def predict():
         
         return jsonify({"error": error_msg}), 500
 
-if __name__ == '__main__':
-    try:
-        load_model()
-        print("🚀 Starting Flask server...")
-        # Run on all interfaces so Flutter can connect
-        app.run(host='0.0.0.0', port=5000, debug=True)
-    except Exception as e:
-        print(f"❌ Error starting server: {e}")
-        raise
-
+# Load the model when the application starts
+try:
+    load_model()
+except Exception as e:
+    print(f"❌ PANIC: Failed to load model on startup: {e}")
+    # Optionally, you can have a global flag to indicate failure
+    # and return a specific error in health checks.
+    
+# The 'if __name__ == '__main__':' block is removed because
+# a production WSGI server like Gunicorn will import the 'app' object
+# and run it, and does not execute this block. For local development,
+# you can run 'gunicorn app:app' from your terminal.
