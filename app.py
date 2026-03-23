@@ -33,14 +33,13 @@ transform = None
 
 def load_model():
     """Load the trained model once at startup"""
-    global model, class_names, transform
+    global model, class_names, transform, MODEL_PATH
     
     if not os.path.exists(MODEL_PATH):
         # Fallback for local development structure if needed
         _project_root = os.path.dirname(_script_dir)
         local_path = os.path.join(_project_root, "room_classifier.pt")
         if os.path.exists(local_path):
-            global MODEL_PATH
             MODEL_PATH = local_path
         else:
             raise FileNotFoundError(f"Model file not found at {MODEL_PATH} or {local_path}")
@@ -49,7 +48,7 @@ def load_model():
     checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
     class_names = checkpoint["class_names"]
     
-    model = models.resnet18(pretrained=False)
+    model = models.resnet18(weights=None)
     model.fc = torch.nn.Linear(model.fc.in_features, len(class_names))
     model.load_state_dict(checkpoint["model_state"])
     model = model.to(DEVICE)
