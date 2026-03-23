@@ -218,8 +218,8 @@ try:
     load_model()
 except Exception as e:
     print(f"❌ PANIC: Failed to load model on startup: {e}")
-    # Optionally, you can have a global flag to indicate failure
-    # and return a specific error in health checks.
+    print(traceback.format_exc())
+    raise SystemExit(1)  # Crash loudly so Render shows the real error in logs
     
 # The 'if __name__ == '__main__':' block is removed because
 # a production WSGI server like Gunicorn will import the 'app' object
